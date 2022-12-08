@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:18.04 as build
 
 # ENV DEBIAN_FRONTEND noninteractive
 
@@ -9,7 +9,6 @@ RUN apt-get -qq update && apt-get install -y && apt-get install -y \
     git build-essential nasm zlib1g-dev sudo \
     libssl-dev libffi-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev 
     
-# RUN apt-get -qq install -y python3
 
 #install cmake
 WORKDIR /home/tmp/cmake
@@ -45,19 +44,55 @@ ENV PATH="${PATH}:${USD_INSTALL}/bin"
 # Build + install USD
 RUN git clone --branch "${USD_RELEASE}" --depth 1 https://github.com/PixarAnimationStudios/USD.git /usr/src/usd
 
-# Fix linking error 
-# RUN grep -qxF 'set(CMAKE_POSITION_INDEPENDENT_CODE ON)' CMakeLists.txt || echo 'set(CMAKE_POSITION_INDEPENDENT_CODE ON)' >> CMakeLists.txt
-
-# RUN python ./build_scripts/build_usd.py --build-monolithic --verbose --prefer-safety-over-speed --no-examples --no-tutorials --no-imaging --no-usdview --draco "${USD_INSTALL}" && \
-#   rm -rf "${USD_REPO}" "${USD_INSTALL}/build" "${USD_INSTALL}/src"
 
 RUN python ./build_scripts/build_usd.py --no-examples --no-tutorials --no-imaging --no-usdview --no-draco "${USD_INSTALL}" && \
   rm -rf "${USD_REPO}" "${USD_INSTALL}/build" "${USD_INSTALL}/src"
 
+
+
+FROM ubuntu:jammy
+
+ARG PYTHON_VER=3.7.7
+
+ENV DEBIAN_FRONTEND noninteractive
+
+# install wget
+RUN true \
+    && apt-get update \
+    && apt-get -y install wget \
+    && apt-get clean \ 
+    && rm -rf /var/lib/apt/lists/* \
+    && true
+
+
+#install python
+RUN true \
+    && apt-get update \
+    && apt-get -y install build-essential libssl-dev zlib1g-dev\
+
+    && mkdir -p /home/tmp/python \
+    && cd /home/tmp/python \
+    && wget -O Python.tgz https://www.python.org/ftp/python/$PYTHON_VER/Python-$PYTHON_VER.tgz  \
+    && tar xzf Python.tgz \
+    && cd Python-$PYTHON_VER \
+    && ./configure --enable-shared --enable-optimizations \ 
+    && make install \
+    && ln -s /usr/local/bin/python3 /usr/local/bin/python \
+    && ln -s /usr/local/bin/pip3 /usr/local/bin/pip \
+    && rm -rf /home/tmp/python \
+    && apt-get -y remove build-essential libssl-dev zlib1g-dev \ 	
+    && apt autoremove -y \
+    && apt-get clean \ 
+    && rm -rf /var/lib/apt/lists/* \
+    && ldconfig \
+    && true
+
 RUN python -m pip install numpy
 
 COPY usdzconvert /home/usdzconvert
-ENTRYPOINT [ "/home/usdzconvert/usdzconvert" ]
+COPY --from=build /usr/local/usd /usr/local/usd
+ARG USD_INSTALL="/usr/local/usd"
+ENV PYTHONPATH="${PYTHONPATH}:${USD_INSTALL}/lib/python"
+ENV PATH="${PATH}:${USD_INSTALL}/bin"
 
-# Share the volume that we have built to
-# VOLUME ["/usr/local/usd"]
+ENTRYPOINT [ "/home/usdzconvert/usdzconvert" ]
