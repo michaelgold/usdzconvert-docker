@@ -97,3 +97,4 @@ ENV PYTHONPATH="${PYTHONPATH}:${USD_INSTALL}/lib/python"
 ENV PATH="${PATH}:${USD_INSTALL}/bin"
 
 ENTRYPOINT [ "/home/usdzconvert/usdzconvert" ]
+RUN chmod 755 /home/usdzconvert/usdzconvert
