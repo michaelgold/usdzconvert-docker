@@ -87,6 +87,7 @@ RUN true \
     && ldconfig \
     && true
 
+RUN python -m pip install --upgrade pip
 RUN python -m pip install numpy
 
 COPY usdzconvert /home/usdzconvert
