@@ -5,9 +5,9 @@ FROM ubuntu:18.04 as build
 ARG PYTHON_VER=3.7.7
 ARG CMAKE_VER=v3.14.6
 
-RUN apt-get -qq update && apt-get install -y && apt-get install -y \
+RUN apt-get -qq update && apt-get install -y \
     git build-essential nasm zlib1g-dev sudo \
-    libssl-dev libffi-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev 
+    libssl-dev libffi-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev libxt-dev
     
 
 #install cmake
@@ -34,12 +34,14 @@ RUN ldconfig
 WORKDIR /usr/src/usd
 
 # Configuration
-ARG USD_RELEASE="v22.05b"
+ARG USD_RELEASE="v23.05"
 ARG USD_INSTALL="/usr/local/usd"
 ENV PYTHONPATH="${PYTHONPATH}:${USD_INSTALL}/lib/python"
 ENV PATH="${PATH}:${USD_INSTALL}/bin"
 
 # Dependencies
+
+RUN apt-get install -y libxt-dev libgl1-mesa-dev libglu1-mesa-dev
 
 # Build + install USD
 RUN git clone --branch "${USD_RELEASE}" --depth 1 https://github.com/PixarAnimationStudios/USD.git /usr/src/usd
@@ -69,7 +71,6 @@ RUN true \
 RUN true \
     && apt-get update \
     && apt-get -y install build-essential libssl-dev zlib1g-dev\
-
     && mkdir -p /home/tmp/python \
     && cd /home/tmp/python \
     && wget -O Python.tgz https://www.python.org/ftp/python/$PYTHON_VER/Python-$PYTHON_VER.tgz  \
